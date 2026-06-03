@@ -1,0 +1,23 @@
+"""OrderFlow — asosiy URL konfiguratsiyasi."""
+
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.http import JsonResponse
+from django.urls import path
+
+
+def health(request):
+    """Oddiy health-check — server ishlayotganini tekshirish uchun."""
+    return JsonResponse({"status": "ok", "service": "OrderFlow API"})
+
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", health, name="health"),
+    # Keyingi bosqichlarda: path("api/", include("...")), ...
+]
+
+# Dev rejimida media fayllarni xizmat qilish
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
