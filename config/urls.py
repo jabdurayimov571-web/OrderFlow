@@ -19,6 +19,7 @@ urlpatterns = [
     path("api/tables/", include("apps.tables.urls")),
     path("api/orders/", include("apps.orders.urls")),
     path("api/auth/", include("apps.accounts.urls")),
+    path("api/push/", include("apps.notifications.urls")),
     path("", include("apps.web.urls")),
 ]
 

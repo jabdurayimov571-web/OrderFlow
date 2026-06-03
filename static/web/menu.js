@@ -206,6 +206,7 @@ async function placeOrder() {
     hide("cartSheet");
     localStorage.setItem(STORE_KEY, order.public_id);
     openStatus(order.public_id);
+    setupPush(order.public_id);
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
@@ -274,6 +275,36 @@ function clearOrder() {
   localStorage.removeItem(STORE_KEY);
   if (statusTimer) clearInterval(statusTimer);
   hide("status");
+}
+
+// ---------- Web Push obuna (bonus, fon xabari) ----------
+async function setupPush(publicId) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return;
+    const { public_key } = await (await fetch(`${API}/push/vapid-key/`)).json();
+    if (!public_key) return;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(public_key),
+    });
+    await fetch(`${API}/push/subscribe/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: publicId, subscription: sub.toJSON() }),
+    });
+  } catch (e) { /* push bo'lmasa - jonli status baribir ishlaydi */ }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
 }
 
 // ---------- Global ----------

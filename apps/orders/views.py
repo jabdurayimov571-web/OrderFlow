@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsCashier, IsKitchen
+from apps.notifications.services import send_order_ready_push
 
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderReadSerializer
@@ -86,4 +87,5 @@ class KitchenMarkReadyView(APIView):
         order = get_object_or_404(Order, public_id=public_id, status=Order.Status.PREPARING)
         order.status = Order.Status.READY
         order.save(update_fields=["status", "updated_at"])
+        send_order_ready_push(order)  # mijozga push (xato bo'lsa ham READY qoladi)
         return Response(OrderReadSerializer(order).data)

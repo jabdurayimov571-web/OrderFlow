@@ -19,6 +19,7 @@ db.sqlite3-journal
 
 # Environment / secrets
 .env
+vapid_private.pem
 
 # IDE / editor
 .vscode/

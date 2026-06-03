@@ -44,6 +44,7 @@ LOCAL_APPS = [
     "apps.tables",
     "apps.orders",
     "apps.web",
+    "apps.notifications",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -114,6 +115,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # --- Sayt manzili (QR kodlar uchun to'liq URL yasashda ishlatiladi) ---
 SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
+
+# --- Web Push (VAPID) ---
+VAPID_PRIVATE_KEY_PATH = BASE_DIR / "vapid_private.pem"
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_CLAIM_EMAIL = env("VAPID_CLAIM_EMAIL", default="mailto:admin@orderflow.uz")
 
 # --- Django REST Framework ---
 REST_FRAMEWORK = {
