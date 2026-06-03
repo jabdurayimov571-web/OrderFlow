@@ -61,7 +61,7 @@ YARATILDI
 - [x] **6. Oshpaz oynasi (KDS)** — tayyorlash, taymer, "Tayyor" ✅
 - [x] **7. Mijoz status + Web Push** — PWA, service worker, ovoz/tebranish ✅
 - [ ] **8. Online to'lov** — Payme/Click integratsiya
-- [~] **9. Analitika** — savdo, top taomlar, o'rtacha vaqt *(9A backend ✅ · 9B dashboard keyingi)*
+- [x] **9. Analitika** — savdo, top taomlar, o'rtacha vaqt ✅
 - [ ] **10. Sayqal** — i18n (uz/ru), PWA, xavfsizlik, deploy (HTTPS)
 
 ## Ish uslubi

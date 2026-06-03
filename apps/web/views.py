@@ -20,6 +20,11 @@ def kitchen(request):
     return render(request, "web/kitchen.html")
 
 
+def dashboard(request):
+    """Admin boshqaruv paneli (analitika). Auth front-end tomonidan token bilan."""
+    return render(request, "web/dashboard.html")
+
+
 def service_worker(request):
     """Service worker'ni ildiz (/) scope bilan xizmat qiladi (Web Push uchun shart)."""
     path = os.path.join(settings.BASE_DIR, "static", "web", "sw.js")
