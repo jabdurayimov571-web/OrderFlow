@@ -4,7 +4,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.permissions import IsCashier
+from apps.accounts.permissions import IsCashier, IsKitchen
 
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderReadSerializer
@@ -58,4 +58,32 @@ class CashierConfirmPaymentView(APIView):
         order.payment_status = Order.PaymentStatus.PAID
         order.status = Order.Status.PREPARING
         order.save(update_fields=["payment_status", "status", "updated_at"])
+        return Response(OrderReadSerializer(order).data)
+
+
+class KitchenOrderListView(generics.ListAPIView):
+    """Oshpaz: tayyorlanayotgan zakazlar (eng eskisi birinchi)."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsKitchen]
+    serializer_class = OrderReadSerializer
+
+    def get_queryset(self):
+        return (
+            Order.objects.filter(status=Order.Status.PREPARING)
+            .prefetch_related("items__modifiers")
+            .order_by("created_at")
+        )
+
+
+class KitchenMarkReadyView(APIView):
+    """Oshpaz zakazni TAYYOR deb belgilaydi (mijozga keyin xabar boradi)."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsKitchen]
+
+    def post(self, request, public_id):
+        order = get_object_or_404(Order, public_id=public_id, status=Order.Status.PREPARING)
+        order.status = Order.Status.READY
+        order.save(update_fields=["status", "updated_at"])
         return Response(OrderReadSerializer(order).data)
