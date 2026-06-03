@@ -62,7 +62,7 @@ YARATILDI
 - [x] **7. Mijoz status + Web Push** — PWA, service worker, ovoz/tebranish ✅
 - [ ] **8. Online to'lov** — Payme/Click integratsiya
 - [x] **9. Analitika** — savdo, top taomlar, o'rtacha vaqt ✅
-- [~] **10. Sayqal** — i18n (uz/ru), PWA, xavfsizlik, deploy (HTTPS) *(10A xavfsizlik ✅ · 10B README keyingi)*
+- [~] **10. Sayqal** — i18n (uz/ru), PWA, xavfsizlik, deploy (HTTPS) *(10A xavfsizlik ✅ · 10B README ✅ · 10C i18n keyingi)*
 
 ## Ish uslubi
 
