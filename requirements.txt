@@ -3,3 +3,4 @@ djangorestframework==3.17.1
 django-environ==0.13.0
 psycopg[binary]==3.3.4
 Pillow==12.2.0
+qrcode[pil]==8.2

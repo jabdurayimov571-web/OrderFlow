@@ -16,6 +16,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", health, name="health"),
     path("api/menu/", include("apps.menu.urls")),
+    path("api/tables/", include("apps.tables.urls")),
 ]
 
 # Dev rejimida media fayllarni xizmat qilish

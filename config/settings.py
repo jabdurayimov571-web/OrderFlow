@@ -40,6 +40,7 @@ LOCAL_APPS = [
     "apps.accounts",
     "apps.common",
     "apps.menu",
+    "apps.tables",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -107,6 +108,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # --- Media fayllar (yuklangan rasmlar) ---
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# --- Sayt manzili (QR kodlar uchun to'liq URL yasashda ishlatiladi) ---
+SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 
 # --- Django REST Framework ---
 REST_FRAMEWORK = {

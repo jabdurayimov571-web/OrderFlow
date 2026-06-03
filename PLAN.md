@@ -55,7 +55,7 @@ YARATILDI
 - [x] **0. Setup** — repo, Django+DRF, env config, skelet ✅
 - [x] **1. Auth & rollar** — admin / kassir / oshpaz ✅
 - [x] **2. Menyu** — kategoriya, taom, variant (modifier), rasm ✅
-- [ ] **3. Stol & QR** — stol, imzolangan QR token, generatsiya/chop
+- [x] **3. Stol & QR** — stol, imzolangan QR token, generatsiya/chop ✅
 - [ ] **4. Mijoz oqimi** — QR → menyu → savat → zakaz berish
 - [ ] **5. Kassir oynasi** — tasdiqlash, to'lov qabul qilish
 - [ ] **6. Oshpaz oynasi (KDS)** — tayyorlash, taymer, "Tayyor"
