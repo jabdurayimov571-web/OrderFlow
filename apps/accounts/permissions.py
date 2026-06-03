@@ -23,3 +23,13 @@ class IsKitchen(BasePermission):
         return bool(
             u and u.is_authenticated and (u.is_oshpaz or u.role == "admin" or u.is_superuser)
         )
+
+
+class IsAdmin(BasePermission):
+    """Faqat admin yoki superuser kira oladi."""
+
+    message = "Bu amal uchun admin huquqi kerak."
+
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and (u.role == "admin" or u.is_superuser))
