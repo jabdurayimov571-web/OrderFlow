@@ -7,3 +7,8 @@ def customer_menu(request, token):
     Token tekshiruvi va menyu yuklash front-end (JS) tomonidan API orqali bajariladi.
     """
     return render(request, "web/menu.html", {"token": token})
+
+
+def cashier(request):
+    """Kassir oynasi (login + to'lov tasdiqlash). Auth front-end tomonidan token bilan."""
+    return render(request, "web/cashier.html")

@@ -53,8 +53,8 @@ class CashierConfirmPaymentView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsCashier]
 
-    def post(self, request, pk):
-        order = get_object_or_404(Order, pk=pk, status=Order.Status.AWAITING_PAYMENT)
+    def post(self, request, public_id):
+        order = get_object_or_404(Order, public_id=public_id, status=Order.Status.AWAITING_PAYMENT)
         order.payment_status = Order.PaymentStatus.PAID
         order.status = Order.Status.PREPARING
         order.save(update_fields=["payment_status", "status", "updated_at"])

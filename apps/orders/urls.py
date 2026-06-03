@@ -10,6 +10,6 @@ from .views import (
 urlpatterns = [
     path("", OrderCreateView.as_view(), name="order-create"),
     path("cashier/", CashierOrderListView.as_view(), name="cashier-orders"),
-    path("cashier/<int:pk>/confirm/", CashierConfirmPaymentView.as_view(), name="cashier-confirm"),
+    path("cashier/<uuid:public_id>/confirm/", CashierConfirmPaymentView.as_view(), name="cashier-confirm"),
     path("<uuid:public_id>/", OrderStatusView.as_view(), name="order-status"),
 ]

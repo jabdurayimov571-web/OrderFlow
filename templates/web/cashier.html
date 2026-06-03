@@ -1,0 +1,37 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrderFlow — Kassir</title>
+  <link rel="stylesheet" href="{% static 'web/cashier.css' %}">
+</head>
+<body>
+  <!-- Login -->
+  <div id="login" class="login">
+    <form id="loginForm" class="login__box">
+      <h1>💳 Kassir</h1>
+      <div class="field"><label>Login</label><input id="username" autocomplete="username" required></div>
+      <div class="field"><label>Parol</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <div id="loginError" class="login__error" hidden></div>
+      <button class="btn btn--primary btn--block" type="submit">Kirish</button>
+    </form>
+  </div>
+
+  <!-- Board -->
+  <div id="board" hidden>
+    <header class="bar">
+      <div class="bar__title">💳 Kassa — to'lov kutilayotgan zakazlar</div>
+      <div class="bar__right">
+        <span id="who" class="bar__who"></span>
+        <button id="logout" class="btn btn--ghost">Chiqish</button>
+      </div>
+    </header>
+    <div id="empty" class="empty" hidden>Hozircha to'lov kutayotgan zakaz yo'q.</div>
+    <div id="orders" class="orders"></div>
+  </div>
+
+  <script src="{% static 'web/cashier.js' %}"></script>
+</body>
+</html>
