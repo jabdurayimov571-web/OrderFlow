@@ -56,6 +56,7 @@ AUTH_USER_MODEL = "accounts.User"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -104,6 +105,12 @@ LANGUAGE_CODE = env("LANGUAGE_CODE", default="uz")
 TIME_ZONE = env("TIME_ZONE", default="Asia/Tashkent")
 USE_I18N = True
 USE_TZ = True
+
+LANGUAGES = [
+    ("uz", "O'zbekcha"),
+    ("ru", "Русский"),
+]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 # --- Statik fayllar (CSS, JS, rasm) ---
 STATIC_URL = "static/"

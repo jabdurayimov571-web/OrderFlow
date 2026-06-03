@@ -4,14 +4,56 @@ const TOKEN = document.body.dataset.token;
 const API = "/api";
 const STORE_KEY = "of_order_" + TOKEN;
 
+// ---------- i18n (uz / ru) ----------
+const I18N = {
+  uz: {
+    table: "Stol", add: "Qo'shish", addToCart: "Savatga qo'shish",
+    note: "Izoh (ixtiyoriy)", notePh: "masalan: piyozsiz",
+    cart: "Savat", total: "Jami", orderNote: "Umumiy izoh (ixtiyoriy)",
+    orderNotePh: "masalan: tezroq bo'lsa", placeOrder: "Zakaz berish",
+    remove: "O'chirish", sending: "Yuborilmoqda…", som: "so'm",
+    loading: "Menyu yuklanmoqda…", emptyMenu: "Hozircha taomlar yo'q.",
+    stepPay: "To'lov", stepPrep: "Tayyorlanmoqda", stepReady: "Tayyor",
+    payHead: "Kassaga borib to'lov qiling", paySub: "To'lovdan so'ng taom tayyorlanadi",
+    prepHead: "Tayyorlanmoqda…", prepSub: "Iltimos, biroz kuting",
+    readyHead: "TAYYOR! 🎉", readySub: "Iltimos, kassadan olib keting",
+    doneHead: "Olib ketildi", doneSub: "Yoqimli ishtaha!",
+    cancelHead: "Bekor qilindi", cancelSub: "Iltimos, kassaga murojaat qiling",
+    newOrder: "Yangi zakaz berish", order: "Zakaz",
+    errTable: "Stol topilmadi yoki faol emas. QR kodni qayta skanerlang.",
+    errOrder: "Zakaz yuborishda xatolik yuz berdi.",
+  },
+  ru: {
+    table: "Стол", add: "Добавить", addToCart: "В корзину",
+    note: "Комментарий (необязательно)", notePh: "например: без лука",
+    cart: "Корзина", total: "Итого", orderNote: "Общий комментарий (необязательно)",
+    orderNotePh: "например: побыстрее", placeOrder: "Заказать",
+    remove: "Удалить", sending: "Отправка…", som: "сум",
+    loading: "Загрузка меню…", emptyMenu: "Пока нет блюд.",
+    stepPay: "Оплата", stepPrep: "Готовится", stepReady: "Готово",
+    payHead: "Оплатите на кассе", paySub: "После оплаты блюдо будет готовиться",
+    prepHead: "Готовится…", prepSub: "Пожалуйста, подождите",
+    readyHead: "ГОТОВО! 🎉", readySub: "Заберите, пожалуйста, на кассе",
+    doneHead: "Выдано", doneSub: "Приятного аппетита!",
+    cancelHead: "Отменён", cancelSub: "Обратитесь, пожалуйста, на кассу",
+    newOrder: "Новый заказ", order: "Заказ",
+    errTable: "Стол не найден или неактивен. Отсканируйте QR заново.",
+    errOrder: "Ошибка при отправке заказа.",
+  },
+};
+let lang = localStorage.getItem("of_lang") || "uz";
+const t = (k) => (I18N[lang] && I18N[lang][k]) || I18N.uz[k] || k;
+
 let MENU = [];
 let CART = []; // {uid, item, modifiers:[mod], quantity, note}
 let audioCtx = null;
 let statusTimer = null;
 let lastStatus = null;
+let lastOrder = null;
+let tableNumber = null;
 
 const $ = (id) => document.getElementById(id);
-const money = (n) => Math.round(Number(n)).toLocaleString("ru-RU") + " so'm";
+const money = (n) => Math.round(Number(n)).toLocaleString("ru-RU") + " " + t("som");
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const show = (id) => ($(id).hidden = false);
@@ -30,13 +72,31 @@ function beep() {
   } catch (e) { /* ovoz qo'llab-quvvatlanmasa - e'tiborsiz */ }
 }
 
+// ---------- Til almashtirish ----------
+function applyStaticTexts() {
+  $("langBtn").textContent = lang === "uz" ? "RU" : "UZ";
+  $("loading").textContent = t("loading");
+  if (tableNumber !== null) $("tableBadge").textContent = t("table") + " #" + tableNumber;
+}
+$("langBtn").addEventListener("click", () => {
+  lang = lang === "uz" ? "ru" : "uz";
+  localStorage.setItem("of_lang", lang);
+  applyStaticTexts();
+  renderMenu();
+  updateCartBar();
+  if (!$("cartSheet").hidden) openCart();
+  if (!$("status").hidden && lastOrder) renderStatus(lastOrder);
+});
+
 // ---------- Init ----------
 async function init() {
+  applyStaticTexts();
   try {
     const tRes = await fetch(`${API}/tables/${TOKEN}/`);
-    if (!tRes.ok) throw new Error("Stol topilmadi yoki faol emas. QR kodni qayta skanerlang.");
+    if (!tRes.ok) throw new Error(t("errTable"));
     const table = await tRes.json();
-    $("tableBadge").textContent = "Stol #" + table.number;
+    tableNumber = table.number;
+    $("tableBadge").textContent = t("table") + " #" + tableNumber;
 
     const mRes = await fetch(`${API}/menu/categories/`);
     MENU = await mRes.json();
@@ -44,7 +104,6 @@ async function init() {
     hide("loading");
     show("menu");
 
-    // Faol zakaz bo'lsa, jonli statusni ko'rsatamiz (reload'dan keyin ham)
     const active = localStorage.getItem(STORE_KEY);
     if (active) openStatus(active);
   } catch (e) {
@@ -67,7 +126,7 @@ function renderMenu() {
     cat.items.forEach((item) => sec.appendChild(itemCard(item)));
     root.appendChild(sec);
   });
-  if (!count) root.innerHTML = '<div class="state">Hozircha taomlar yo\'q.</div>';
+  if (!count) root.innerHTML = `<div class="state">${t("emptyMenu")}</div>`;
 }
 
 function itemCard(item) {
@@ -83,7 +142,7 @@ function itemCard(item) {
       <div class="item__desc">${esc(item.description || "")}</div>
       <div class="item__row">
         <span class="item__price">${money(item.price)}</span>
-        <button class="btn btn--primary">Qo'shish</button>
+        <button class="btn btn--primary">${t("add")}</button>
       </div>
     </div>`;
   el.querySelector("button").addEventListener("click", () => openItem(item));
@@ -106,9 +165,9 @@ function openItem(item) {
     <div class="sheet__price" id="dPrice">${money(item.price)}</div>
     ${item.description ? `<p style="color:var(--muted);font-size:14px;margin-bottom:10px">${esc(item.description)}</p>` : ""}
     ${mods}
-    <div class="field"><label>Izoh (ixtiyoriy)</label><input id="dNote" placeholder="masalan: piyozsiz"></div>
+    <div class="field"><label>${t("note")}</label><input id="dNote" placeholder="${t("notePh")}"></div>
     <div class="field qty"><button id="dMinus">−</button><span id="dQty">1</span><button id="dPlus">+</button></div>
-    <button class="btn btn--primary btn--block" id="dAdd">Savatga qo'shish · <span id="dAddTotal">${money(item.price)}</span></button>`;
+    <button class="btn btn--primary btn--block" id="dAdd">${t("addToCart")} · <span id="dAddTotal">${money(item.price)}</span></button>`;
   show("itemSheet");
 
   const recalc = () => {
@@ -156,15 +215,15 @@ function openCart() {
       </div>
       <div>
         <div class="cart-line__total">${money(lineTotal(c))}</div>
-        <button class="btn btn--ghost" data-rm="${i}" style="margin-top:6px;padding:4px 10px">O'chirish</button>
+        <button class="btn btn--ghost" data-rm="${i}" style="margin-top:6px;padding:4px 10px">${t("remove")}</button>
       </div>
     </div>`).join("");
   $("cartSheetPanel").innerHTML = `
-    <div class="sheet__title">Savat</div>
+    <div class="sheet__title">${t("cart")}</div>
     ${lines}
-    <div class="cart-total-row"><span>Jami</span><span>${money(cartTotal())}</span></div>
-    <div class="field"><label>Umumiy izoh (ixtiyoriy)</label><input id="orderNote" placeholder="masalan: tezroq bo'lsa"></div>
-    <button class="btn btn--ok btn--block" id="placeBtn">Zakaz berish</button>`;
+    <div class="cart-total-row"><span>${t("total")}</span><span>${money(cartTotal())}</span></div>
+    <div class="field"><label>${t("orderNote")}</label><input id="orderNote" placeholder="${t("orderNotePh")}"></div>
+    <button class="btn btn--ok btn--block" id="placeBtn">${t("placeOrder")}</button>`;
   $("cartSheetPanel").querySelectorAll("[data-rm]").forEach((b) =>
     b.addEventListener("click", () => {
       CART.splice(Number(b.dataset.rm), 1);
@@ -179,8 +238,7 @@ function openCart() {
 async function placeOrder() {
   const btn = $("placeBtn");
   btn.disabled = true;
-  btn.textContent = "Yuborilmoqda…";
-  // Foydalanuvchi tegishi (gesture) bilan audioni "ochamiz" - keyin TAYYOR'da ovoz chaladi
+  btn.textContent = t("sending");
   try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   const payload = {
     table_token: TOKEN,
@@ -199,7 +257,7 @@ async function placeOrder() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error("Zakaz yuborishda xatolik yuz berdi.");
+    if (!res.ok) throw new Error(t("errOrder"));
     const order = await res.json();
     CART = [];
     updateCartBar();
@@ -210,7 +268,7 @@ async function placeOrder() {
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
-    btn.textContent = "Zakaz berish";
+    btn.textContent = t("placeOrder");
   }
 }
 
@@ -233,6 +291,7 @@ async function pollStatus(publicId) {
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     }
     lastStatus = order.status;
+    lastOrder = order;
     renderStatus(order);
     if (order.status === "cancelled" && statusTimer) clearInterval(statusTimer);
   } catch (e) { /* tarmoq xatosi - keyingi pollda qayta urinadi */ }
@@ -242,7 +301,7 @@ function renderStatus(order) {
   const active = order.status === "preparing" ? 1
     : (order.status === "ready" || order.status === "completed") ? 2 : 0;
   const isReady = order.status === "ready" || order.status === "completed";
-  const labels = ["To'lov", "Tayyorlanmoqda", "Tayyor"];
+  const labels = [t("stepPay"), t("stepPrep"), t("stepReady")];
   let steps = "";
   labels.forEach((lab, i) => {
     if (i) steps += '<div class="step__bar"></div>';
@@ -253,27 +312,28 @@ function renderStatus(order) {
   });
 
   let head, sub, cls = "";
-  if (order.status === "awaiting_payment") { head = "Kassaga borib to'lov qiling"; sub = "To'lovdan so'ng taom tayyorlanadi"; }
-  else if (order.status === "preparing") { head = "Tayyorlanmoqda…"; sub = "Iltimos, biroz kuting"; }
-  else if (order.status === "ready") { head = "TAYYOR! 🎉"; sub = "Iltimos, kassadan olib keting"; cls = "status--ready"; }
-  else if (order.status === "completed") { head = "Olib ketildi"; sub = "Yoqimli ishtaha!"; cls = "status--ready"; }
-  else if (order.status === "cancelled") { head = "Bekor qilindi"; sub = "Iltimos, kassaga murojaat qiling"; }
+  if (order.status === "awaiting_payment") { head = t("payHead"); sub = t("paySub"); }
+  else if (order.status === "preparing") { head = t("prepHead"); sub = t("prepSub"); }
+  else if (order.status === "ready") { head = t("readyHead"); sub = t("readySub"); cls = "status--ready"; }
+  else if (order.status === "completed") { head = t("doneHead"); sub = t("doneSub"); cls = "status--ready"; }
+  else if (order.status === "cancelled") { head = t("cancelHead"); sub = t("cancelSub"); }
   else { head = order.status_display || order.status; sub = ""; }
 
   $("statusBox").className = "status__box " + cls;
   $("statusBox").innerHTML = `
-    <div class="status__num">Zakaz #${order.number} · Stol ${order.table_number}</div>
+    <div class="status__num">${t("order")} #${order.number} · ${t("table")} ${order.table_number}</div>
     <div class="status__steps">${steps}</div>
     <h1 class="status__head">${head}</h1>
     <p class="status__sub">${sub}</p>
-    <div class="status__total">Jami: <b>${money(order.total)}</b></div>
-    <button class="btn btn--ghost btn--block" id="newOrderBtn">Yangi zakaz berish</button>`;
+    <div class="status__total">${t("total")}: <b>${money(order.total)}</b></div>
+    <button class="btn btn--ghost btn--block" id="newOrderBtn">${t("newOrder")}</button>`;
   $("newOrderBtn").onclick = clearOrder;
 }
 
 function clearOrder() {
   localStorage.removeItem(STORE_KEY);
   if (statusTimer) clearInterval(statusTimer);
+  lastOrder = null;
   hide("status");
 }
 
