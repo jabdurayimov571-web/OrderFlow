@@ -17,6 +17,7 @@ urlpatterns = [
     path("", health, name="health"),
     path("api/menu/", include("apps.menu.urls")),
     path("api/tables/", include("apps.tables.urls")),
+    path("api/orders/", include("apps.orders.urls")),
 ]
 
 # Dev rejimida media fayllarni xizmat qilish
