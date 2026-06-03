@@ -57,7 +57,7 @@ YARATILDI
 - [x] **2. Menyu** — kategoriya, taom, variant (modifier), rasm ✅
 - [x] **3. Stol & QR** — stol, imzolangan QR token, generatsiya/chop ✅
 - [x] **4. Mijoz oqimi** — QR → menyu → savat → zakaz berish ✅
-- [ ] **5. Kassir oynasi** — tasdiqlash, to'lov qabul qilish
+- [~] **5. Kassir oynasi** — tasdiqlash, to'lov qabul qilish *(5A backend ✅ · 5B frontend keyingi)*
 - [ ] **6. Oshpaz oynasi (KDS)** — tayyorlash, taymer, "Tayyor"
 - [ ] **7. Mijoz status + Web Push** — PWA, service worker, ovoz/tebranish
 - [ ] **8. Online to'lov** — Payme/Click integratsiya

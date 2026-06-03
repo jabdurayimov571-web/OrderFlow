@@ -1,5 +1,10 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.accounts.permissions import IsCashier
 
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderReadSerializer
@@ -25,3 +30,32 @@ class OrderStatusView(generics.RetrieveAPIView):
     serializer_class = OrderReadSerializer
     lookup_field = "public_id"
     lookup_url_kwarg = "public_id"
+
+
+class CashierOrderListView(generics.ListAPIView):
+    """Kassir: to'lov kutilayotgan zakazlar (tarkib + narx bilan)."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsCashier]
+    serializer_class = OrderReadSerializer
+
+    def get_queryset(self):
+        return (
+            Order.objects.filter(status=Order.Status.AWAITING_PAYMENT)
+            .prefetch_related("items__modifiers")
+            .order_by("created_at")
+        )
+
+
+class CashierConfirmPaymentView(APIView):
+    """Kassir to'lovni tasdiqlaydi -> zakaz TAYYORLANMOQDA ga o'tadi (oshpazga tushadi)."""
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsCashier]
+
+    def post(self, request, pk):
+        order = get_object_or_404(Order, pk=pk, status=Order.Status.AWAITING_PAYMENT)
+        order.payment_status = Order.PaymentStatus.PAID
+        order.status = Order.Status.PREPARING
+        order.save(update_fields=["payment_status", "status", "updated_at"])
+        return Response(OrderReadSerializer(order).data)
