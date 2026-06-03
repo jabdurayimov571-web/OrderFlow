@@ -23,6 +23,7 @@ db.sqlite3-journal
 # IDE / editor
 .vscode/
 .idea/
+.claude/
 *.swp
 
 # OS

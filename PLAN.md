@@ -56,7 +56,7 @@ YARATILDI
 - [x] **1. Auth & rollar** — admin / kassir / oshpaz ✅
 - [x] **2. Menyu** — kategoriya, taom, variant (modifier), rasm ✅
 - [x] **3. Stol & QR** — stol, imzolangan QR token, generatsiya/chop ✅
-- [~] **4. Mijoz oqimi** — QR → menyu → savat → zakaz berish *(4A backend ✅ · 4B frontend keyingi)*
+- [x] **4. Mijoz oqimi** — QR → menyu → savat → zakaz berish ✅
 - [ ] **5. Kassir oynasi** — tasdiqlash, to'lov qabul qilish
 - [ ] **6. Oshpaz oynasi (KDS)** — tayyorlash, taymer, "Tayyor"
 - [ ] **7. Mijoz status + Web Push** — PWA, service worker, ovoz/tebranish
