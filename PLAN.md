@@ -52,8 +52,8 @@ YARATILDI
 
 ## Bosqichlar (roadmap)
 
-- [~] **0. Setup** — repo, Django+DRF, env config, skelet *(jarayonda)*
-- [ ] **1. Auth & rollar** — admin / kassir / oshpaz
+- [x] **0. Setup** — repo, Django+DRF, env config, skelet ✅
+- [x] **1. Auth & rollar** — admin / kassir / oshpaz ✅
 - [ ] **2. Menyu** — kategoriya, taom, variant (modifier), rasm
 - [ ] **3. Stol & QR** — stol, imzolangan QR token, generatsiya/chop
 - [ ] **4. Mijoz oqimi** — QR → menyu → savat → zakaz berish

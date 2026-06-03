@@ -3,16 +3,12 @@ OrderFlow — Django 5.2 (LTS) sozlamalari.
 Env-asosli konfiguratsiya (django-environ): barcha sirlar .env faylida.
 """
 
-import sys
 from pathlib import Path
 
 import environ
 
 # --- Asosiy yo'llar ---
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Ilovalar `apps/` papkasida joylashadi — qisqa nom bilan import qilish uchun
-sys.path.insert(0, str(BASE_DIR / "apps"))
 
 # --- Environment (.env) ---
 env = environ.Env(
@@ -39,10 +35,15 @@ THIRD_PARTY_APPS = [
     "rest_framework",
 ]
 
-# Bizning ilovalar (keyingi bosqichlarda qo'shiladi: accounts, menu, tables, orders, ...)
-LOCAL_APPS = []
+# Bizning ilovalar
+LOCAL_APPS = [
+    "apps.accounts",
+]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+# Custom User modeli (rollar: admin / kassir / oshpaz)
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
