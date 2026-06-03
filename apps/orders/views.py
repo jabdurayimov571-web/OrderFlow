@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsCashier, IsKitchen
@@ -12,8 +13,10 @@ from .serializers import OrderCreateSerializer, OrderReadSerializer
 
 
 class OrderCreateView(generics.CreateAPIView):
-    """Mijoz zakaz beradi: POST /api/orders/"""
+    """Mijoz zakaz beradi: POST /api/orders/ (spam oldini olish uchun throttling)."""
 
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "order"
     serializer_class = OrderCreateSerializer
 
     def create(self, request, *args, **kwargs):
