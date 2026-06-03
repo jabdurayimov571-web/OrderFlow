@@ -12,3 +12,8 @@ def customer_menu(request, token):
 def cashier(request):
     """Kassir oynasi (login + to'lov tasdiqlash). Auth front-end tomonidan token bilan."""
     return render(request, "web/cashier.html")
+
+
+def kitchen(request):
+    """Oshpaz oynasi (KDS). Auth front-end tomonidan token bilan."""
+    return render(request, "web/kitchen.html")
