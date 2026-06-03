@@ -2,9 +2,13 @@
 
 const TOKEN = document.body.dataset.token;
 const API = "/api";
+const STORE_KEY = "of_order_" + TOKEN;
 
 let MENU = [];
 let CART = []; // {uid, item, modifiers:[mod], quantity, note}
+let audioCtx = null;
+let statusTimer = null;
+let lastStatus = null;
 
 const $ = (id) => document.getElementById(id);
 const money = (n) => Math.round(Number(n)).toLocaleString("ru-RU") + " so'm";
@@ -12,6 +16,19 @@ const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const show = (id) => ($(id).hidden = false);
 const hide = (id) => ($(id).hidden = true);
+
+function beep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.4, audioCtx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+    o.start(); o.stop(audioCtx.currentTime + 0.51);
+  } catch (e) { /* ovoz qo'llab-quvvatlanmasa - e'tiborsiz */ }
+}
 
 // ---------- Init ----------
 async function init() {
@@ -26,6 +43,10 @@ async function init() {
     renderMenu();
     hide("loading");
     show("menu");
+
+    // Faol zakaz bo'lsa, jonli statusni ko'rsatamiz (reload'dan keyin ham)
+    const active = localStorage.getItem(STORE_KEY);
+    if (active) openStatus(active);
   } catch (e) {
     hide("loading");
     $("error").textContent = e.message;
@@ -74,15 +95,12 @@ let draft = null;
 function openItem(item) {
   draft = { item, modifiers: [], quantity: 1, note: "" };
   const mods = (item.modifiers || [])
-    .map(
-      (m) => `
+    .map((m) => `
     <label class="mod">
       <input type="checkbox" value="${m.id}" data-price="${m.price_delta}">
       <span class="mod__name">${esc(m.name)}</span>
       <span class="mod__price">+${money(m.price_delta)}</span>
-    </label>`
-    )
-    .join("");
+    </label>`).join("");
   $("itemSheetPanel").innerHTML = `
     <div class="sheet__title">${esc(item.name)}</div>
     <div class="sheet__price" id="dPrice">${money(item.price)}</div>
@@ -95,9 +113,7 @@ function openItem(item) {
 
   const recalc = () => {
     const modSum = [...$("itemSheetPanel").querySelectorAll("input:checked")].reduce(
-      (s, c) => s + Number(c.dataset.price),
-      0
-    );
+      (s, c) => s + Number(c.dataset.price), 0);
     $("dPrice").textContent = money(Number(item.price) + modSum);
     $("dAddTotal").textContent = money((Number(item.price) + modSum) * draft.quantity);
   };
@@ -106,8 +122,7 @@ function openItem(item) {
   $("dPlus").onclick = () => { draft.quantity++; $("dQty").textContent = draft.quantity; recalc(); };
   $("dAdd").onclick = () => {
     draft.modifiers = [...$("itemSheetPanel").querySelectorAll("input:checked")].map((c) =>
-      item.modifiers.find((x) => String(x.id) === c.value)
-    );
+      item.modifiers.find((x) => String(x.id) === c.value));
     draft.note = $("dNote").value.trim();
     CART.push({ uid: String(CART.length) + "-" + draft.item.id, ...draft });
     hide("itemSheet");
@@ -133,8 +148,7 @@ function updateCartBar() {
 
 function openCart() {
   if (!CART.length) return;
-  const lines = CART.map(
-    (c, i) => `
+  const lines = CART.map((c, i) => `
     <div class="cart-line">
       <div class="cart-line__body">
         <div class="cart-line__name">${esc(c.item.name)} ×${c.quantity}</div>
@@ -144,8 +158,7 @@ function openCart() {
         <div class="cart-line__total">${money(lineTotal(c))}</div>
         <button class="btn btn--ghost" data-rm="${i}" style="margin-top:6px;padding:4px 10px">O'chirish</button>
       </div>
-    </div>`
-  ).join("");
+    </div>`).join("");
   $("cartSheetPanel").innerHTML = `
     <div class="sheet__title">Savat</div>
     ${lines}
@@ -157,8 +170,7 @@ function openCart() {
       CART.splice(Number(b.dataset.rm), 1);
       updateCartBar();
       CART.length ? openCart() : hide("cartSheet");
-    })
-  );
+    }));
   $("placeBtn").onclick = placeOrder;
   show("cartSheet");
 }
@@ -168,6 +180,8 @@ async function placeOrder() {
   const btn = $("placeBtn");
   btn.disabled = true;
   btn.textContent = "Yuborilmoqda…";
+  // Foydalanuvchi tegishi (gesture) bilan audioni "ochamiz" - keyin TAYYOR'da ovoz chaladi
+  try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   const payload = {
     table_token: TOKEN,
     payment_method: "cash",
@@ -190,7 +204,8 @@ async function placeOrder() {
     CART = [];
     updateCartBar();
     hide("cartSheet");
-    showConfirm(order);
+    localStorage.setItem(STORE_KEY, order.public_id);
+    openStatus(order.public_id);
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
@@ -198,16 +213,67 @@ async function placeOrder() {
   }
 }
 
-function showConfirm(order) {
-  $("confirmBox").innerHTML = `
-    <div class="confirm__icon">✅</div>
-    <h2>Zakaz qabul qilindi!</h2>
-    <div class="confirm__num">#${order.number}</div>
-    <p style="color:var(--muted);margin-bottom:6px">Jami: <b>${money(order.total)}</b></p>
-    <p style="margin-bottom:18px">Iltimos, <b>kassaga borib to'lov qiling</b>. To'lovdan so'ng taom tayyorlanadi.</p>
-    <button class="btn btn--primary btn--block" id="newOrderBtn">Yangi zakaz</button>`;
-  $("newOrderBtn").onclick = () => location.reload();
-  show("confirm");
+// ---------- Jonli status ----------
+function openStatus(publicId) {
+  lastStatus = null;
+  show("status");
+  pollStatus(publicId);
+  if (statusTimer) clearInterval(statusTimer);
+  statusTimer = setInterval(() => pollStatus(publicId), 4000);
+}
+
+async function pollStatus(publicId) {
+  try {
+    const res = await fetch(`${API}/orders/${publicId}/`);
+    if (res.status === 404) { clearOrder(); return; }
+    const order = await res.json();
+    if (order.status === "ready" && lastStatus && lastStatus !== "ready") {
+      beep();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    }
+    lastStatus = order.status;
+    renderStatus(order);
+    if (order.status === "cancelled" && statusTimer) clearInterval(statusTimer);
+  } catch (e) { /* tarmoq xatosi - keyingi pollda qayta urinadi */ }
+}
+
+function renderStatus(order) {
+  const active = order.status === "preparing" ? 1
+    : (order.status === "ready" || order.status === "completed") ? 2 : 0;
+  const isReady = order.status === "ready" || order.status === "completed";
+  const labels = ["To'lov", "Tayyorlanmoqda", "Tayyor"];
+  let steps = "";
+  labels.forEach((lab, i) => {
+    if (i) steps += '<div class="step__bar"></div>';
+    const done = i < active || isReady;
+    const cur = i === active && !isReady;
+    steps += `<div class="step ${done ? "step--done" : ""} ${cur ? "step--active" : ""}">
+      <div class="step__dot">${done ? "✓" : i + 1}</div><div class="step__label">${lab}</div></div>`;
+  });
+
+  let head, sub, cls = "";
+  if (order.status === "awaiting_payment") { head = "Kassaga borib to'lov qiling"; sub = "To'lovdan so'ng taom tayyorlanadi"; }
+  else if (order.status === "preparing") { head = "Tayyorlanmoqda…"; sub = "Iltimos, biroz kuting"; }
+  else if (order.status === "ready") { head = "TAYYOR! 🎉"; sub = "Iltimos, kassadan olib keting"; cls = "status--ready"; }
+  else if (order.status === "completed") { head = "Olib ketildi"; sub = "Yoqimli ishtaha!"; cls = "status--ready"; }
+  else if (order.status === "cancelled") { head = "Bekor qilindi"; sub = "Iltimos, kassaga murojaat qiling"; }
+  else { head = order.status_display || order.status; sub = ""; }
+
+  $("statusBox").className = "status__box " + cls;
+  $("statusBox").innerHTML = `
+    <div class="status__num">Zakaz #${order.number} · Stol ${order.table_number}</div>
+    <div class="status__steps">${steps}</div>
+    <h1 class="status__head">${head}</h1>
+    <p class="status__sub">${sub}</p>
+    <div class="status__total">Jami: <b>${money(order.total)}</b></div>
+    <button class="btn btn--ghost btn--block" id="newOrderBtn">Yangi zakaz berish</button>`;
+  $("newOrderBtn").onclick = clearOrder;
+}
+
+function clearOrder() {
+  localStorage.removeItem(STORE_KEY);
+  if (statusTimer) clearInterval(statusTimer);
+  hide("status");
 }
 
 // ---------- Global ----------

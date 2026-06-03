@@ -59,7 +59,7 @@ YARATILDI
 - [x] **4. Mijoz oqimi** — QR → menyu → savat → zakaz berish ✅
 - [x] **5. Kassir oynasi** — tasdiqlash, to'lov qabul qilish ✅
 - [x] **6. Oshpaz oynasi (KDS)** — tayyorlash, taymer, "Tayyor" ✅
-- [ ] **7. Mijoz status + Web Push** — PWA, service worker, ovoz/tebranish
+- [~] **7. Mijoz status + Web Push** — PWA, service worker, ovoz/tebranish *(7A jonli status ✅ · 7B Web Push keyingi)*
 - [ ] **8. Online to'lov** — Payme/Click integratsiya
 - [ ] **9. Analitika** — savdo, top taomlar, o'rtacha vaqt
 - [ ] **10. Sayqal** — i18n (uz/ru), PWA, xavfsizlik, deploy (HTTPS)

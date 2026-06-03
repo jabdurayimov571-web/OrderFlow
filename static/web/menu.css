@@ -103,7 +103,20 @@ body {
 .cart-line__total { font-weight: 800; text-align: right; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 18px; font-weight: 800; margin: 16px 0; }
 
-.confirm { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .5); padding: 24px; }
-.confirm__box { background: #fff; border-radius: 18px; padding: 28px 22px; text-align: center; max-width: 360px; width: 100%; }
-.confirm__icon { font-size: 56px; }
-.confirm__num { font-size: 40px; font-weight: 900; color: var(--accent); margin: 6px 0; }
+/* Jonli status */
+.status { position: fixed; inset: 0; z-index: 40; background: var(--bg); overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; padding: 30px 20px; }
+.status__box { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 28px 22px; text-align: center; max-width: 420px; width: 100%; transition: background .3s; }
+.status__box.status--ready { background: #eafaf1; box-shadow: 0 0 0 3px var(--ok) inset; }
+.status__num { font-weight: 800; color: var(--muted); margin-bottom: 18px; }
+.status__steps { display: flex; align-items: flex-start; justify-content: center; margin: 10px 0 22px; }
+.step { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 84px; }
+.step__dot { width: 38px; height: 38px; border-radius: 50%; background: #e6e8ee; color: var(--muted); display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.step--done .step__dot { background: var(--ok); color: #fff; }
+.step--active .step__dot { background: var(--accent); color: #fff; }
+.step__label { font-size: 12px; color: var(--muted); }
+.step__bar { flex: 1; height: 3px; background: #e6e8ee; margin-top: 18px; max-width: 40px; }
+.status__head { font-size: 26px; margin: 6px 0; }
+.status--ready .status__head { color: var(--ok); font-size: 34px; }
+.status__sub { color: var(--muted); margin-bottom: 16px; }
+.status__total { margin-bottom: 18px; font-size: 16px; }
+.status__total b { color: var(--accent); }
