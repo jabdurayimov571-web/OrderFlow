@@ -43,6 +43,7 @@ LOCAL_APPS = [
     "apps.menu",
     "apps.tables",
     "apps.orders",
+    "apps.payments",
     "apps.web",
     "apps.notifications",
     "apps.analytics",
@@ -128,6 +129,24 @@ SITE_URL = env("SITE_URL", default="http://127.0.0.1:8000")
 VAPID_PRIVATE_KEY_PATH = BASE_DIR / "vapid_private.pem"
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
 VAPID_CLAIM_EMAIL = env("VAPID_CLAIM_EMAIL", default="mailto:admin@orderflow.uz")
+
+# --- To'lov tizimlari (Payme / Click) ---
+# Sandbox/test kalitlari .env faylida. Kalit bo'sh bo'lsa o'sha provayder
+# webhook'i auth'dan o'tmaydi (integratsiya amalda o'chiq bo'ladi).
+PAYMENT_TEST_MODE = env.bool("PAYMENT_TEST_MODE", default=True)
+
+# Payme (Merchant API) — summa tiyinda, JSON-RPC, Basic auth
+PAYME_MERCHANT_ID = env("PAYME_MERCHANT_ID", default="")
+PAYME_MERCHANT_KEY = env("PAYME_MERCHANT_KEY", default="")  # test yoki prod kalit
+PAYME_CHECKOUT_URL = env("PAYME_CHECKOUT_URL", default="https://checkout.test.paycom.uz")
+PAYME_ACCOUNT_FIELD = env("PAYME_ACCOUNT_FIELD", default="order_id")  # hisob maydoni
+
+# Click (SHOP API) — summa so'mda, form POST, md5 imzo
+CLICK_SERVICE_ID = env("CLICK_SERVICE_ID", default="")
+CLICK_MERCHANT_ID = env("CLICK_MERCHANT_ID", default="")
+CLICK_SECRET_KEY = env("CLICK_SECRET_KEY", default="")
+CLICK_MERCHANT_USER_ID = env("CLICK_MERCHANT_USER_ID", default="")
+CLICK_PAY_URL = env("CLICK_PAY_URL", default="https://my.click.uz/services/pay")
 
 # --- Xavfsizlik ---
 X_FRAME_OPTIONS = "DENY"
