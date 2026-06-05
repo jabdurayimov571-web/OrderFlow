@@ -275,7 +275,7 @@ async function placeOrder() {
 // ---------- Jonli status ----------
 function openStatus(publicId) {
   lastStatus = null;
-  show("status");
+  // status oynasi faqat muvaffaqiyatli render'dan keyin ko'rsatiladi (pollStatus ichida)
   pollStatus(publicId);
   if (statusTimer) clearInterval(statusTimer);
   statusTimer = setInterval(() => pollStatus(publicId), 4000);
@@ -284,7 +284,7 @@ function openStatus(publicId) {
 async function pollStatus(publicId) {
   try {
     const res = await fetch(`${API}/orders/${publicId}/`);
-    if (res.status === 404) { clearOrder(); return; }
+    if (!res.ok) { clearOrder(); return; }
     const order = await res.json();
     if (order.status === "ready" && lastStatus && lastStatus !== "ready") {
       beep();
@@ -293,6 +293,7 @@ async function pollStatus(publicId) {
     lastStatus = order.status;
     lastOrder = order;
     renderStatus(order);
+    show("status");
     if (order.status === "cancelled" && statusTimer) clearInterval(statusTimer);
   } catch (e) { /* tarmoq xatosi - keyingi pollda qayta urinadi */ }
 }
