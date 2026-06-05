@@ -61,9 +61,12 @@ class Order(TimeStampedModel):
         return f"Zakaz #{self.number}"
 
     def save(self, *args, **kwargs):
-        # Zakaz raqamini har kun uchun ketma-ket beramiz (#1, #2, ...)
+        # Zakaz raqamini har kun uchun ketma-ket beramiz (#1, #2, ...).
+        # localdate() — mahalliy (TIME_ZONE) sana; created_at__date lookup ham
+        # mahalliy vaqtda hisoblanadi, shuning uchun ular mos kelishi shart
+        # (aks holda UTC-mahalliy farqi tunda hisoblagichni buzadi).
         if not self.number:
-            today = timezone.now().date()
+            today = timezone.localdate()
             last = Order.objects.filter(created_at__date=today).aggregate(
                 m=models.Max("number")
             )["m"]
