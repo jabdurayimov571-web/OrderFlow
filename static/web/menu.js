@@ -3,6 +3,7 @@
 const TOKEN = document.body.dataset.token;
 const API = "/api";
 const STORE_KEY = "of_order_" + TOKEN;
+const PROVIDER_KEY = "of_provider_" + TOKEN; // online to'lov provayderi (payme|click)
 
 // ---------- i18n (uz / ru) ----------
 const I18N = {
@@ -22,6 +23,10 @@ const I18N = {
     newOrder: "Yangi zakaz berish", order: "Zakaz",
     errTable: "Stol topilmadi yoki faol emas. QR kodni qayta skanerlang.",
     errOrder: "Zakaz yuborishda xatolik yuz berdi.",
+    payMethod: "To'lov turi", payCash: "Naqd (kassada)",
+    payNow: "To'lash", payRedirect: "To'lovga yo'naltirilmoqda…",
+    errPay: "To'lov sahifasini ochib bo'lmadi. Qaytadan urinib ko'ring.",
+    createdHead: "To'lov kutilmoqda", createdSub: "To'lovni yakunlang yoki qaytadan urinib ko'ring.",
   },
   ru: {
     table: "Стол", add: "Добавить", addToCart: "В корзину",
@@ -39,6 +44,10 @@ const I18N = {
     newOrder: "Новый заказ", order: "Заказ",
     errTable: "Стол не найден или неактивен. Отсканируйте QR заново.",
     errOrder: "Ошибка при отправке заказа.",
+    payMethod: "Способ оплаты", payCash: "Наличные (на кассе)",
+    payNow: "Оплатить", payRedirect: "Перенаправление на оплату…",
+    errPay: "Не удалось открыть страницу оплаты. Попробуйте снова.",
+    createdHead: "Ожидается оплата", createdSub: "Завершите оплату или попробуйте снова.",
   },
 };
 let lang = localStorage.getItem("of_lang") || "uz";
@@ -51,6 +60,7 @@ let statusTimer = null;
 let lastStatus = null;
 let lastOrder = null;
 let tableNumber = null;
+let payMethod = "cash"; // savatda tanlangan to'lov turi: cash | payme | click
 
 const $ = (id) => document.getElementById(id);
 const money = (n) => Math.round(Number(n)).toLocaleString("ru-RU") + " " + t("som");
@@ -222,6 +232,14 @@ function openCart() {
     <div class="sheet__title">${t("cart")}</div>
     ${lines}
     <div class="cart-total-row"><span>${t("total")}</span><span>${money(cartTotal())}</span></div>
+    <div class="pay-method">
+      <div class="pay-method__label">${t("payMethod")}</div>
+      <div class="pay-opts">
+        <button type="button" class="pay-opt" data-pay="cash">${t("payCash")}</button>
+        <button type="button" class="pay-opt" data-pay="payme">Payme</button>
+        <button type="button" class="pay-opt" data-pay="click">Click</button>
+      </div>
+    </div>
     <div class="field"><label>${t("orderNote")}</label><input id="orderNote" placeholder="${t("orderNotePh")}"></div>
     <button class="btn btn--ok btn--block" id="placeBtn">${t("placeOrder")}</button>`;
   $("cartSheetPanel").querySelectorAll("[data-rm]").forEach((b) =>
@@ -230,6 +248,16 @@ function openCart() {
       updateCartBar();
       CART.length ? openCart() : hide("cartSheet");
     }));
+  // To'lov turi tanlash (standart: naqd)
+  payMethod = "cash";
+  const payOpts = $("cartSheetPanel").querySelectorAll("[data-pay]");
+  payOpts.forEach((b) => {
+    b.classList.toggle("pay-opt--active", b.dataset.pay === payMethod);
+    b.addEventListener("click", () => {
+      payMethod = b.dataset.pay;
+      payOpts.forEach((x) => x.classList.toggle("pay-opt--active", x.dataset.pay === payMethod));
+    });
+  });
   $("placeBtn").onclick = placeOrder;
   show("cartSheet");
 }
@@ -242,7 +270,7 @@ async function placeOrder() {
   try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
   const payload = {
     table_token: TOKEN,
-    payment_method: "cash",
+    payment_method: payMethod === "cash" ? "cash" : "online",
     note: ($("orderNote") && $("orderNote").value.trim()) || "",
     items: CART.map((c) => ({
       menu_item: c.item.id,
@@ -263,13 +291,33 @@ async function placeOrder() {
     updateCartBar();
     hide("cartSheet");
     localStorage.setItem(STORE_KEY, order.public_id);
-    openStatus(order.public_id);
-    setupPush(order.public_id);
+    if (payMethod === "cash") {
+      openStatus(order.public_id);
+      setupPush(order.public_id);
+    } else {
+      // Online to'lov: provayder checkout sahifasiga yo'naltiramiz
+      localStorage.setItem(PROVIDER_KEY, payMethod);
+      btn.textContent = t("payRedirect");
+      try {
+        await goToCheckout(order.public_id, payMethod);
+      } catch (err) {
+        // To'lovga o'tib bo'lmadi -> status oynasi (qayta urinish tugmasi bilan)
+        openStatus(order.public_id);
+      }
+    }
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
     btn.textContent = t("placeOrder");
   }
+}
+
+// Mijozni online to'lov (Payme/Click) sahifasiga yo'naltiradi.
+async function goToCheckout(publicId, provider) {
+  const res = await fetch(`${API}/payments/${publicId}/${provider}-url/`);
+  if (!res.ok) throw new Error(t("errPay"));
+  const data = await res.json();
+  window.location.href = data.url;
 }
 
 // ---------- Jonli status ----------
@@ -314,12 +362,16 @@ function renderStatus(order) {
 
   let head, sub, cls = "";
   if (order.status === "awaiting_payment") { head = t("payHead"); sub = t("paySub"); }
+  else if (order.status === "created") { head = t("createdHead"); sub = t("createdSub"); }
   else if (order.status === "preparing") { head = t("prepHead"); sub = t("prepSub"); }
   else if (order.status === "ready") { head = t("readyHead"); sub = t("readySub"); cls = "status--ready"; }
   else if (order.status === "completed") { head = t("doneHead"); sub = t("doneSub"); cls = "status--ready"; }
   else if (order.status === "cancelled") { head = t("cancelHead"); sub = t("cancelSub"); }
   else { head = order.status_display || order.status; sub = ""; }
 
+  const payAgain = order.status === "created"
+    ? `<button class="btn btn--ok btn--block" id="payAgainBtn" style="margin-bottom:10px">${t("payNow")}</button>`
+    : "";
   $("statusBox").className = "status__box " + cls;
   $("statusBox").innerHTML = `
     <div class="status__num">${t("order")} #${order.number} · ${t("table")} ${order.table_number}</div>
@@ -327,12 +379,26 @@ function renderStatus(order) {
     <h1 class="status__head">${head}</h1>
     <p class="status__sub">${sub}</p>
     <div class="status__total">${t("total")}: <b>${money(order.total)}</b></div>
+    ${payAgain}
     <button class="btn btn--ghost btn--block" id="newOrderBtn">${t("newOrder")}</button>`;
+  const pab = $("payAgainBtn");
+  if (pab)
+    pab.onclick = () => {
+      const provider = localStorage.getItem(PROVIDER_KEY) || "payme";
+      pab.disabled = true;
+      pab.textContent = t("payRedirect");
+      goToCheckout(order.public_id, provider).catch(() => {
+        pab.disabled = false;
+        pab.textContent = t("payNow");
+        alert(t("errPay"));
+      });
+    };
   $("newOrderBtn").onclick = clearOrder;
 }
 
 function clearOrder() {
   localStorage.removeItem(STORE_KEY);
+  localStorage.removeItem(PROVIDER_KEY);
   if (statusTimer) clearInterval(statusTimer);
   lastOrder = null;
   hide("status");
