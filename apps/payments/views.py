@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 
 from apps.orders.models import Order
 
+from . import click as click_api
 from . import payme as payme_api
 
 # JSON-RPC metod nomi -> PaymeService metodi
@@ -119,3 +120,46 @@ class PaymeCheckoutURLView(APIView):
         if not settings.PAYME_MERCHANT_ID:
             return Response({"detail": "Payme sozlanmagan."}, status=503)
         return Response({"url": payme_api.build_payme_checkout_url(order)})
+
+
+class ClickPrepareView(APIView):
+    """POST /api/payments/click/prepare/ — Click action=0."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        if hasattr(data, "dict"):
+            data = data.dict()
+        with transaction.atomic():
+            return Response(click_api.ClickService().prepare(data))
+
+
+class ClickCompleteView(APIView):
+    """POST /api/payments/click/complete/ — Click action=1."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        if hasattr(data, "dict"):
+            data = data.dict()
+        with transaction.atomic():
+            return Response(click_api.ClickService().complete(data))
+
+
+class ClickCheckoutURLView(APIView):
+    """GET /api/payments/<public_id>/click-url/ — to'lov sahifasi URL'i."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, public_id):
+        order = get_object_or_404(Order, public_id=public_id)
+        if order.payment_method != Order.PaymentMethod.ONLINE:
+            return Response({"detail": "Bu zakaz online to'lov uchun emas."}, status=400)
+        if not settings.CLICK_SERVICE_ID:
+            return Response({"detail": "Click sozlanmagan."}, status=503)
+        return Response({"url": click_api.build_click_checkout_url(order)})

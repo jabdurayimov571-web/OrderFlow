@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import time
 from decimal import Decimal
@@ -9,11 +10,27 @@ from django.urls import reverse
 from apps.orders.models import Order
 from apps.tables.models import Table
 
-from .models import PaymeTransaction
+from .models import ClickTransaction, PaymeTransaction
 
 
 def _auth(key="test_key"):
     return "Basic " + base64.b64encode(f"Paycom:{key}".encode()).decode()
+
+
+def _click_prepare_sign(d, secret):
+    raw = (
+        f"{d['click_trans_id']}{d['service_id']}{secret}{d['merchant_trans_id']}"
+        f"{d['amount']}{d['action']}{d['sign_time']}"
+    )
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _click_complete_sign(d, secret):
+    raw = (
+        f"{d['click_trans_id']}{d['service_id']}{secret}{d['merchant_trans_id']}"
+        f"{d['merchant_prepare_id']}{d['amount']}{d['action']}{d['sign_time']}"
+    )
+    return hashlib.md5(raw.encode()).hexdigest()
 
 
 @override_settings(
@@ -219,3 +236,147 @@ class PaymeCheckoutURLTests(TestCase):
         url = reverse("payme-url", args=[cash.public_id])
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 400)
+
+
+@override_settings(
+    CLICK_SECRET_KEY="secret",
+    CLICK_SERVICE_ID="svc",
+    CLICK_MERCHANT_ID="mer",
+    CLICK_PAY_URL="https://my.click.uz/services/pay",
+    SITE_URL="https://orderflow.test",
+)
+class ClickWebhookTests(TestCase):
+    def setUp(self):
+        self.table = Table.objects.create(number=10)
+        self.order = Order.objects.create(
+            table=self.table,
+            payment_method=Order.PaymentMethod.ONLINE,
+            status=Order.Status.CREATED,
+            total=Decimal("25000.00"),
+        )
+        self.amount = "25000.00"
+        self.prepare_url = reverse("click-prepare")
+        self.complete_url = reverse("click-complete")
+
+    def _prepare_data(self, **over):
+        d = {
+            "click_trans_id": "111",
+            "service_id": "svc",
+            "click_paydoc_id": "222",
+            "merchant_trans_id": str(self.order.public_id),
+            "amount": self.amount,
+            "action": "0",
+            "error": "0",
+            "error_note": "",
+            "sign_time": "2026-06-06 12:00:00",
+        }
+        d.update(over)
+        d["sign_string"] = _click_prepare_sign(d, "secret")
+        return d
+
+    def _complete_data(self, merchant_prepare_id, **over):
+        d = {
+            "click_trans_id": "111",
+            "service_id": "svc",
+            "click_paydoc_id": "222",
+            "merchant_trans_id": str(self.order.public_id),
+            "merchant_prepare_id": str(merchant_prepare_id),
+            "amount": self.amount,
+            "action": "1",
+            "error": "0",
+            "error_note": "",
+            "sign_time": "2026-06-06 12:05:00",
+        }
+        d.update(over)
+        d["sign_string"] = _click_complete_sign(d, "secret")
+        return d
+
+    def _do_prepare(self, **over):
+        return self.client.post(self.prepare_url, data=self._prepare_data(**over)).json()
+
+    # --- Prepare ---
+    def test_prepare_success(self):
+        body = self._do_prepare()
+        self.assertEqual(body["error"], 0)
+        self.assertIn("merchant_prepare_id", body)
+        self.assertTrue(ClickTransaction.objects.filter(click_trans_id="111").exists())
+
+    def test_prepare_bad_signature(self):
+        d = self._prepare_data()
+        d["sign_string"] = "bad"
+        body = self.client.post(self.prepare_url, data=d).json()
+        self.assertEqual(body["error"], -1)
+
+    def test_prepare_wrong_amount(self):
+        body = self._do_prepare(amount="999.00")
+        self.assertEqual(body["error"], -2)
+
+    def test_prepare_order_not_found(self):
+        body = self._do_prepare(merchant_trans_id="nope")
+        self.assertEqual(body["error"], -5)
+
+    # --- Complete ---
+    def test_complete_success_moves_order_to_preparing(self):
+        prep = self._do_prepare()
+        body = self.client.post(
+            self.complete_url, data=self._complete_data(prep["merchant_prepare_id"])
+        ).json()
+        self.assertEqual(body["error"], 0)
+        self.assertIn("merchant_confirm_id", body)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.PREPARING)
+        self.assertEqual(self.order.payment_status, Order.PaymentStatus.PAID)
+
+    def test_complete_bad_signature(self):
+        prep = self._do_prepare()
+        d = self._complete_data(prep["merchant_prepare_id"])
+        d["sign_string"] = "bad"
+        body = self.client.post(self.complete_url, data=d).json()
+        self.assertEqual(body["error"], -1)
+
+    def test_complete_idempotent(self):
+        prep = self._do_prepare()
+        mpid = prep["merchant_prepare_id"]
+        b1 = self.client.post(self.complete_url, data=self._complete_data(mpid)).json()
+        b2 = self.client.post(self.complete_url, data=self._complete_data(mpid)).json()
+        self.assertEqual(b1["error"], 0)
+        self.assertEqual(b2["error"], 0)
+        self.assertEqual(b1["merchant_confirm_id"], b2["merchant_confirm_id"])
+
+    def test_complete_with_click_error_cancels_order(self):
+        prep = self._do_prepare()
+        body = self.client.post(
+            self.complete_url,
+            data=self._complete_data(prep["merchant_prepare_id"], error="-5000"),
+        ).json()
+        self.assertEqual(body["error"], -9)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.CANCELLED)
+
+    def test_complete_unknown_transaction(self):
+        body = self.client.post(
+            self.complete_url, data=self._complete_data(999999)
+        ).json()
+        self.assertEqual(body["error"], -6)
+
+
+@override_settings(
+    CLICK_SERVICE_ID="svc",
+    CLICK_MERCHANT_ID="mer",
+    CLICK_PAY_URL="https://my.click.uz/services/pay",
+    SITE_URL="https://orderflow.test",
+)
+class ClickCheckoutURLTests(TestCase):
+    def test_checkout_url_returned(self):
+        table = Table.objects.create(number=11)
+        order = Order.objects.create(
+            table=table,
+            payment_method=Order.PaymentMethod.ONLINE,
+            status=Order.Status.CREATED,
+            total=Decimal("12000.00"),
+        )
+        url = reverse("click-url", args=[order.public_id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("my.click.uz", resp.json()["url"])
+        self.assertIn("transaction_param", resp.json()["url"])
